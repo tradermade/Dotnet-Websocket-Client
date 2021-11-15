@@ -1,19 +1,24 @@
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Net.WebSockets;
-
 using Websocket.Client;
+using Newtonsoft.Json;
 
-namespace TraderMadeWebSocketTest
+public class quote
+        {
+            public string symbol { get; set; }
+            public long ts { get; set; }
+            public double bid { get; set; }
+            public double ask { get; set; }
+            public double mid { get; set; }
+        }
+
+
+namespace csWebsocket
 {
     class Program
     {
-        private string streaming_API_Key = "streaming_api_key";
+        private string streaming_API_Key = "your_api_key";
+
 
         static void Main(string[] args)
         {
@@ -21,9 +26,11 @@ namespace TraderMadeWebSocketTest
             prg.Initialize();
         }
 
+
         private void Initialize()
         {
             Console.CursorVisible = false;
+
 
             try
             {
@@ -31,29 +38,43 @@ namespace TraderMadeWebSocketTest
                 var url = new Uri("wss://marketdata.tradermade.com/feedadv");
                 
 
+
                 using (var client = new WebsocketClient(url))
                 {
                     client.ReconnectTimeout = TimeSpan.FromSeconds(30);
+
 
                     client.ReconnectionHappened.Subscribe(info =>
                     {
                         Console.WriteLine("Reconnection happened, type: " + info.Type);
                     });
 
+
                     client.MessageReceived.Subscribe(msg =>
                     {
                         Console.WriteLine("Message received: " + msg);
 
+
                         if (msg.ToString().ToLower() == "connected")
                         {
-                            string data = "{\"userKey\":\"" + streaming_API_Key + "\", \"symbol\":\"EURUSD,GBPUSD,USDJPY\"}";
+                            string data =  "{\"userKey\":\"" + streaming_API_Key + "\", \"symbol\":\"EURUSD,GBPUSD,USDJPY\"}";
                             client.Send(data);
                         }
+                        else {
+                        string data = msg.Text;
+                        var result = JsonConvert.DeserializeObject<quote>(data);
+                        Console.WriteLine(result.symbol + " " + result.bid + " " + result.ask);
+                        }
+                       
+                        
                     });
+
 
                     client.Start();
 
+
                     //Task.Run(() => client.Send("{ message }"));
+
 
                     exitEvent.WaitOne();
                 }
@@ -63,8 +84,10 @@ namespace TraderMadeWebSocketTest
                 Console.WriteLine("ERROR: " + ex.ToString());
             }
 
+
             Console.ReadKey();
         }
+
 
     }
 }
